@@ -1,0 +1,12 @@
+When we enter the “prodcons” shell command with or without a parameter, the two processes- producer and consumer are created and started. Each process has its own copy of local variables, function arguments, and function calls, but all processes share the set of global variables(from textbook). We can see that at times the producer keeps producing values and consumer takes some time to consume the value. At times the consumer seems to be consuming the same value multiple times. Even though the two processes run concurrently, they require different times per iteration. Yes, the program output does seem like garbage which producer and consumer are printing one after the other and the statements cutoff each other. And that is because printf statements require number of machine instructions and time to execute. And there is no synchronization between the processes. No. All the produced values are not getting consumed. And also the same value can be consumed multiple times. For the two processes to coordinate correctly, a synchronization mechanism is required which is not present here. The functions used are- 
+
+create(): a system call which creates a process to start running the procedure, sets up a process in a suspended state, returns a PID 
+
+resume(): unsuspends the process so that it can begin executing, takes PID as argument 
+
+Two functions we created and used are void consumer(int count) and void producer(int count).  
+
+producer(): This function modifies the global variable n, sets it to the counter value and prints the produced I.e the value of n. 
+
+consumer(): This function reads the value of global variable n and prints the value.  
+
