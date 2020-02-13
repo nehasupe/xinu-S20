@@ -53,7 +53,8 @@ void prodcons_bb(int nargs, char* args[]){
 	//}
 	for(k=0;k<atoi(args[1]);k++){
 		char str1[]="producer_";
-
+		//Ref: https://beginnersbook.com/2015/02/c-program-to-concatenate-two-strings-without-using-strcat/
+		//for concatinating 2 strings
 		sprintf(str2, "%d", k);
 		for(i=0; str1[i]!='\0'; ++i); 
 		for(j=0; str2[j]!='\0'; ++j, ++i){
@@ -69,7 +70,8 @@ void prodcons_bb(int nargs, char* args[]){
 	char str3[3];
 	for(l=0;l<atoi(args[2]); l++){
 		char str4[]="consumer_";
-
+		//Ref: https://beginnersbook.com/2015/02/c-program-to-concatenate-two-strings-without-using-strcat/
+		//for concatinating 2 strings
 		sprintf(str3,"%d", l);
 		for(m=0; str4[m]!='\0'; ++m);
 		for(a=0; str3[a]!='\0'; ++a, ++m){
