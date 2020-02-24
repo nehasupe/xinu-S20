@@ -1,0 +1,3 @@
+The future mode that was used for fibonacci was FUTURE_SHARED.
+It was used because a future that is produced needs to be accessed by many getter processes and the value of these futures should not change or be overwritten.
+A FUTURE_SHARED future is immutable and can be accessed by many processes which is what we need for fibonacci. 
