@@ -3,6 +3,8 @@
 #include <prodcons_bb.h>
 #include <stdlib.h>
 
+extern uint future_test(int nargs, char *args[]);
+
 int arr_q[5];
 sid32 psem, csem, mutex;
 int head;
@@ -99,6 +101,7 @@ shellcmd xsh_run(int nargs, char *args[])
 	      	printf("hello\n");
 	      	printf("prodcons\n");
 		printf("prodcons_bb\n");
+		printf("future_test");
 		return OK;
 		}
 	 if (nargs == 1){
@@ -115,8 +118,12 @@ shellcmd xsh_run(int nargs, char *args[])
     	nargs--;
 	if(strncmp(args[0], "prodcons_bb", 9) == 0) {
 		                  /* create a process with the function as an entry point. */
-		                 resume (create((void *)prodcons_bb, 4096, 20, "prodcons_bb", 2, nargs, args));
-				                               }
+		resume (create((void *)prodcons_bb, 4096, 20, "prodcons_bb", 2, nargs, args));
+		}
+	if(strncmp(args[0], "futures_test", 13)== 0){
+		resume (create((void *)future_test, 4096, 20, "future_test", 2, nargs, args));
+		}
+
 
 	//if(strncmp(args[1], "prodcons", 8) == 0) {
 	         /* create a process with the function as an entry point. */
