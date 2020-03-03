@@ -43,32 +43,31 @@ void stream_consumer(int32 id, struct stream *str){
 		wait(str -> mutex);
 		c = (str -> queue)[str -> head].value;
 		t = (str -> queue)[str -> head].time;
+		str -> head = (str -> head + 1) % work_queue_depth;
+		//signal(str -> mutex);
+		//signal(str -> spaces);			
 		if(t==0){
 			kprintf("stream_consumer exiting\n");
 			ptsend(pcport, getpid());
 			return;
 		}
 		counter++;
-		//This is not important now, fix later
-		//freemem(((str -> queue)[str -> head]),sizeof(struct data_element));
-		//printf("stream_consumer: %d consumed: %d\n",id, c);
-		str -> head = (str -> head + 1) % work_queue_depth;
-		signal(str -> mutex);
-		signal(str -> spaces);			
-	
 		tscdf_update(tc, t, c);
-		if(output_time == counter){
+		if(counter==output_time){
 			counter = 0;
-		int32* qarray = tscdf_quartiles(tc);
+			int32* qarray = tscdf_quartiles(tc);
 
-	if(qarray == NULL) {
-		          kprintf("tscdf_quartiles returned NULL\n");
-			        continue;
-	 }
-	 sprintf(output, "s%d: %d %d %d %d %d", id, qarray[0], qarray[1], qarray[2], qarray[3], qarray[4]);
-	 kprintf("%s\n", output);	       
-	 freemem((char *)qarray, (6*sizeof(int32)));
-	}
+		if(qarray == NULL) {
+		        kprintf("tscdf_quartiles returned NULL\n");
+			continue;
+	 	}
+	 	sprintf(output, "s%d: %d %d %d %d %d", id, qarray[0], qarray[1], qarray[2], qarray[3], qarray[4]);
+	 	kprintf("%s\n", output);	       
+	 	freemem((char *)qarray, (6*sizeof(int32)));
+		}
+		signal(str -> mutex);
+		signal(str -> spaces);
+
 	//ptsend(pcport, getpid());
 	}
 }
