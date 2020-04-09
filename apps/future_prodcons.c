@@ -4,9 +4,9 @@
 
 uint future_prod(future_t* fut, char* value) {
 	  int* nptr = (int*) value;
+	   future_set(fut, value);
 	  kprintf("Produced %d\n", *nptr);
-	      future_set(fut, value);
-	        return OK;
+	  return OK;
 }
 
 uint future_cons(future_t* fut) {
