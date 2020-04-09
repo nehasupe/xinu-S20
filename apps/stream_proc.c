@@ -1,8 +1,8 @@
 #include <xinu.h>
 #include <stream_proc.h>
 //#include "tscdf_input1.h"
+//#include "input_1000000.h"
 #include "tscdf.h"
-//#include "tscdf_input.h"
 uint pcport;
 int work_queue_depth;
 int num_streams;
