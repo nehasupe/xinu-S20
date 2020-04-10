@@ -3,6 +3,8 @@
 #include <prodcons_bb.h>
 #include <stdlib.h>
 
+
+extern int stream_proc_futures(int nargs, char *args[]);
 extern uint future_test(int nargs, char *args[]);
 extern int stream_proc(int nargs, char *args[]);
 int arr_q[5];
@@ -103,14 +105,15 @@ shellcmd xsh_run(int nargs, char *args[])
 		printf("prodcons_bb\n");
 		printf("future_test\n");
 		printf("tscdf\n");
+		printf("tscdf_fq\n");
 		return OK;
-		}
+	}
 	 if (nargs == 1){
 	        printf("Usage:\n\n");
 	        printf("run [command]\n");
 		printf("--help\n");
 	        printf("'run list' for list of commands\n");
-	        }
+	}
 
     	/* This will go past "run" and pass the function/process name and its
 	* arguments.
@@ -120,14 +123,16 @@ shellcmd xsh_run(int nargs, char *args[])
 	if(strncmp(args[0], "prodcons_bb", 9) == 0) {
 		                  /* create a process with the function as an entry point. */
 		resume (create((void *)prodcons_bb, 4096, 20, "prodcons_bb", 2, nargs, args));
-		}
+	}
 	if(strncmp(args[0], "futures_test", 13)== 0){
 		resume (create((void *)future_test, 4096, 20, "future_test", 2, nargs, args));
-		}
-	if(strncmp(args[0], "tscdf", 5)== 0){
-		resume (create(stream_proc, 4096, 20, "stream_proc", 2, nargs, args));
 	}
-		
+	if(strncmp(args[0], "tscdf_fq", 8)== 0){
+		resume (create(stream_proc_futures, 4096, 20, "stream_proc_futures", 2, nargs, args));
+}
+	//if(strncmp(args[0], "tscdf", 5)== 0){
+	//	resume (create(stream_proc, 4096, 20, "stream_proc",2, nargs, args));
+	//}
 
 
 	//if(strncmp(args[1], "prodcons", 8) == 0) {
