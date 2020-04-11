@@ -118,7 +118,7 @@ syscall future_set(future_t* f, char* in){
 		tmp = f -> get_queue;
 		f -> get_queue = f->get_queue -> next;
 		resume(tmp -> pid);
-		kprintf("resumed ready consumer pid %d\n", tmp -> pid);
+		//kprintf("resumed ready consumer pid %d\n", tmp -> pid);
 		freemem(tmp, sizeof(fnode_t*));
 	}
 		
