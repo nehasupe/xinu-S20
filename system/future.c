@@ -84,17 +84,15 @@ syscall future_get(future_t* f, char* out){
 			//node -> pid = getpid();
 
 			if(f -> count == 0){
-				 fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
-				                         node -> pid = getpid();
-
-
+				fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
+				node -> pid = getpid();
 				fnode_t *ptr;
-			node -> next = NULL;
-			ptr = f -> get_queue;
-			while(ptr -> next != NULL)
-				ptr = ptr -> next;
-			ptr -> next = node;
-			suspend(getpid());
+				node -> next = NULL;
+				ptr = f -> get_queue;
+				while(ptr -> next != NULL)
+					ptr = ptr -> next;
+				ptr -> next = node;
+				suspend(getpid());
 			}
 			char* headelemptr = f->data + (f->head * f->size);
 			memcpy(out, headelemptr, f -> size);
@@ -135,11 +133,11 @@ syscall future_get(future_t* f, char* out){
 			f -> head = (f -> head + 1) % (f -> max_elems);
 			int counter = f -> count;
 			f -> count = counter - 1;
-			fnode_t *ptr;
-			ptr = f -> set_queue;
+			fnode_t *ptr1;
+			ptr1 = f -> set_queue;
 			int c = 0;
-			while(ptr != NULL){
-				ptr = ptr -> next;
+			while(ptr1 != NULL){
+				ptr1 = ptr1 -> next;
 				c = c + 1;
 			}
 			if(c > 0){

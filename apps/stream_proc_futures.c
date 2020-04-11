@@ -161,7 +161,7 @@ int stream_proc_futures(int nargs, char* args[]) {
 		de *d = (de *)getmem(sizeof(de));
 		d->time = ts;
 		d->value = v;
-		//kprintf("%d\ %d\ %d\n",st, d -> value, d -> time);
+		kprintf("%d\ %d\ %d\n",st, d -> value, d -> time);
 
 		future_set(farray[st],(char*)&d);
 		
