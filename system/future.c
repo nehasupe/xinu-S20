@@ -65,7 +65,7 @@ syscall future_get(future_t* f, char* out){
 			return OK;
 		}
 		if(f -> state == FUTURE_READY){
-			f -> state = FUTURE_WAITING;
+			//f -> state = FUTURE_WAITING;
 			//fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
 			//node -> pid = getpid();
 
