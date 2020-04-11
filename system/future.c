@@ -61,6 +61,20 @@ syscall future_get(future_t* f, char* out){
 			f -> head = (f -> head + 1) % (f -> max_elems);
 			int counter = f -> count;
 			f -> count = counter - 1;
+			fnode_t *ptr;
+			ptr = f -> set_queue;
+			int c = 0;
+			while(ptr != NULL){
+				ptr = ptr -> next;
+				c = c + 1;
+			}
+			if(c > 0){
+				fnode_t *tmp;
+				tmp = f -> set_queue;
+				f-> set_queue = f->set_queue -> next;
+				resume(tmp -> pid);
+				freemem(tmp, sizeof(fnode_t*));
+			}
 			restore(mask);
 			return OK;
 		}
