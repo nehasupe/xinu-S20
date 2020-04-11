@@ -14,7 +14,7 @@ int output_time;
 uint stream_producer_future(future_t** fut) {
 	int i = 0;
 	int stream_id;
-	while(1){
+	for(i=0; i<n_input;i++){
 		struct data_element *d;
 		d = (struct data_element*)getmem(sizeof(de));
 		char* a = (char *)stream_input[i++];
@@ -24,15 +24,15 @@ uint stream_producer_future(future_t** fut) {
 		while (*a++ != '\t');
 		d -> value = atoi(a);
 		future_set(fut[stream_id],(char *)&d);
+		kprintf("%d\ %d\ %d\n",stream_id, d -> value, d -> time);
+
 		//kprintf("value: %d\n", d -> value);
 		//kprintf("time: %d\n", d -> time);
 	}
 }
-
 uint stream_consumer_future(int32 id, future_t* fut) {
 	int32 c;
 	int32 t;
-	char output[100];
 	int counter = 0;
 	int i, status;
 	struct tscdf* tc = tscdf_init(time_window);
@@ -40,12 +40,14 @@ uint stream_consumer_future(int32 id, future_t* fut) {
 	while(1){
 		struct data_element *d;
 		d = (struct data_element*)getmem(sizeof(de));
+		//de *d = (de *)getmem(sizeof(de));
+		//future_get(fut,d);
+	
 
 		future_get(fut,(char*)&d);
-		if(d){
-		// kprintf("value: %d\n", d -> value);
-		// kprintf("time: %d\n", d -> time);
-		 
+
+		//kprintf("%d\ %d\ %d\n",id, d -> value, d -> time);
+		//kprintf("time: %d\n", d -> time);
 		c = d -> value;
 		t = d -> time;
 		if(t==0 && c==0){
@@ -57,6 +59,7 @@ uint stream_consumer_future(int32 id, future_t* fut) {
 		tscdf_update(tc, t, c);
 		if(counter==output_time){
 			counter = 0;
+			char output[100];
 			int32* qarray = tscdf_quartiles(tc);
 	
 			if(qarray == NULL) {
@@ -64,12 +67,14 @@ uint stream_consumer_future(int32 id, future_t* fut) {
 			        continue;
 			}
 
-	           sprintf(output, "s%d: %d %d %d %d %d", id, qarray[0], qarray[1], qarray[2], qarray[3], qarray[4]);
-		   kprintf("%s\n", output);
+	         sprintf(output, "s%d: %d %d %d %d %d", id, qarray[0], qarray[1], qarray[2], qarray[3], qarray[4]);
+		 kprintf("%s\n", output);
 			freemem((char *)qarray, (6*sizeof(int32)));
 		}
-		}
+		
+	
 	}
+	ptsend(pcport, getpid());
 	return OK;
 }
 
@@ -121,20 +126,21 @@ int stream_proc_futures(int nargs, char* args[]) {
 		return(-1);
 	}
 	// Create array to hold `n_streams` number of futures
-	future_t *farray[num_streams];
+	//future_t *farray[num_streams];
+	future_t** farray = (future_t **)getmem(sizeof(future_t *)* num_streams);
 	// Create consumer processes and allocate futures
 	for(i=0;i<num_streams;i++){
 		if((farray[i]=future_alloc(FUTURE_QUEUE,sizeof(de), work_queue_depth))==(future_t*)SYSERR){
 			printf("Error creating future!");
 			return -1;
-		}
+	}
 	}
 
 	//resume( create(stream_producer_future, 1024, 20, "stream_producer_future", 1, farray));
 	for(i = 0; i < num_streams; i++){
 		resume (create(stream_consumer_future, 1024, 20, "stream_consumer_future", 2, i, farray[i]));
 	}
-	resume( create(stream_producer_future, 1024, 20, "stream_producer_future", 1, farray));
+	//resume( create(stream_producer_future, 1024, 20, "stream_producer_future", 1, farray));
 
 	// Use `i` as the stream id.
 	// Future mode = FUTURE_QUEUE
@@ -144,7 +150,23 @@ int stream_proc_futures(int nargs, char* args[]) {
 	 
 	//}
 	// Parse input header file data and set future values
-	
+	//kprintf("n input %d\n", n_input);
+	for(i = 0; i< n_input; i++){
+		char* a = (char *)stream_input[i];
+		int st = atoi(a);
+		while (*a++ != '\t');
+		int ts = atoi(a);
+		while (*a++ != '\t');
+		int v = atoi(a);
+		de *d = (de *)getmem(sizeof(de));
+		d->time = ts;
+		d->value = v;
+		//kprintf("%d\ %d\ %d\n",st, d -> value, d -> time);
+
+		future_set(farray[st],(char*)&d);
+		
+	}
+
 	// Wait for all consumers to exit
 	for(i=0; i < num_streams; i++) {
 		uint32 pm;
@@ -153,6 +175,10 @@ int stream_proc_futures(int nargs, char* args[]) {
 	}
 	
 	// free futures array
+	//for(i =0; i < num_streams; i++){
+	//	future_free(farray[i]);
+	//}
+
 	ptdelete(pcport, 0);
 	time = (((clktime * 1000) + clkticks) - ((secs * 1000) + msecs));
 	printf("time in ms: %u\n", time);
