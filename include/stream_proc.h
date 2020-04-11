@@ -1,6 +1,6 @@
 #include <xinu.h>
 
-struct data_element {
+typedef struct data_element {
 	int32 time;
 	int32 value;
 } de;
