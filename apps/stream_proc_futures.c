@@ -46,7 +46,7 @@ uint stream_consumer_future(int32 id, future_t* fut) {
 
 		future_get(fut,(char*)&d);
 
-		//kprintf("%d\ %d\ %d\n",id, d -> value, d -> time);
+		kprintf("%d\ %d\ %d\n",id, d -> value, d -> time);
 		//kprintf("time: %d\n", d -> time);
 		c = d -> value;
 		t = d -> time;

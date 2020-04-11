@@ -65,7 +65,15 @@ syscall future_get(future_t* f, char* out){
 			return OK;
 		}
 		if(f -> state == FUTURE_READY){
+			f -> state = FUTURE_WAITING;
+			//fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
+			//node -> pid = getpid();
+
 			if(f -> count == 0){
+				 fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
+				                         node -> pid = getpid();
+
+
 				fnode_t *ptr;
 			node -> next = NULL;
 			ptr = f -> get_queue;
@@ -97,6 +105,10 @@ syscall future_get(future_t* f, char* out){
 			return OK;
 		}
 		if(f -> state == FUTURE_WAITING){
+			 fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
+			                         node -> pid = getpid();
+
+
 			fnode_t *ptr;
 			node -> next = NULL;
 			ptr = f -> get_queue;
@@ -112,6 +124,8 @@ syscall future_get(future_t* f, char* out){
 			restore(mask);
 			return OK;
 			
+	
+		}
 	}
 	/*
 	//WORKING CODE
