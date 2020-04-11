@@ -9,12 +9,11 @@
 ////Returns: future_t - SYSERR or a pointer to a valid future
 
 future_t* future_alloc(future_mode_t mode, uint size, uint nelems){
-
 	future_t* newfut = (future_t*) getmem(sizeof(future_t));
 	newfut -> state = FUTURE_EMPTY;
 	newfut -> size = size;
 	newfut -> mode = mode;
-	newfut -> data = (char*) getmem(size*nelems);
+	newfut -> data = (char*) getmem(sizeof(char)*size*nelems);
 	newfut -> max_elems = nelems;
 	newfut -> count = 0;
 	newfut -> head = 0;
@@ -24,6 +23,7 @@ future_t* future_alloc(future_mode_t mode, uint size, uint nelems){
 	newfut -> get_queue = NULL;
 	//char *proc_name = proctab[getpid()].prname;
 	return newfut;
+	
 }
 
 syscall future_free(future_t* f){
@@ -47,7 +47,60 @@ syscall future_get(future_t* f, char* out){
 		restore(mask);
 		return SYSERR;
 	}
-	if(f -> state == FUTURE_EMPTY){
+	if(f -> mode == FUTURE_QUEUE){
+		if(f->state == FUTURE_EMPTY){
+			fnode_t* node = (fnode_t *) getmem(sizeof(fnode_t));
+			node -> pid = getpid();
+			node -> next = NULL;
+			f -> get_queue = node;
+			f -> state = FUTURE_WAITING;
+			suspend(getpid());
+
+		}
+		else if(f -> state == FUTURE_WAITING){
+			f -> state = FUTURE_WAITING;
+			fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
+			node -> pid = getpid();
+		        //if(f -> set_queue == NULL){
+			//	node -> next = NULL;
+			//	f -> get_queue = node;
+			//}
+			//else{
+				fnode_t *ptr;
+				node -> next = NULL;
+				ptr = f -> get_queue;
+				while(ptr -> next != NULL)
+					ptr = ptr -> next;
+				ptr -> next = node;
+			//}
+			suspend(getpid());
+
+		}
+			char* headelemptr = f->data + (f->head * f->size);
+			memcpy(out, headelemptr, f -> size);
+			f -> head = (f -> head + 1) % (f -> max_elems);
+			int counter = f -> count;
+			f -> count = counter - 1;
+			// did not set state to empty
+			// if get queue is not empty state = waiting
+			fnode_t *ptr;
+			ptr = f -> set_queue;
+			int c = 0;
+			while(ptr != NULL){
+				ptr = ptr -> next;
+				c = c + 1;
+			}
+			if(c > 0){
+				fnode_t *tmp;
+				tmp = f -> set_queue;
+				f-> set_queue = f->set_queue -> next;
+				resume(tmp -> pid);
+				freemem(tmp, sizeof(fnode_t*));
+			}
+			
+		
+	}	
+		/*if(f -> state == FUTURE_EMPTY){
 		if(f -> mode == FUTURE_SHARED || f -> mode == FUTURE_QUEUE){
 			if(f -> get_queue != NULL && f -> mode == FUTURE_SHARED){
 				restore(mask);
@@ -97,6 +150,8 @@ syscall future_get(future_t* f, char* out){
 			f -> head = (f -> head + 1) % (f -> max_elems);
 			int counter = f -> count;
 			f -> count = counter - 1;
+			// did not set state to empty
+			// if get queue is not empty state = waiting
 			fnode_t *ptr;
 			ptr = f -> set_queue;
 			int c = 0;
@@ -105,7 +160,9 @@ syscall future_get(future_t* f, char* out){
 				ptr = ptr -> next;
 				c = c + 1;
 			}
+			//kprintf("c %d\n", c);
 			if(c > 0){
+				//kprintf("popc %d", c);
 				//pop the set_queue and resume the process
 				fnode_t *tmp;
 				tmp = f -> set_queue;
@@ -115,19 +172,125 @@ syscall future_get(future_t* f, char* out){
 			}
 		}
 			
-	}
+	}*/
 	restore(mask);
 	return OK;
 }
 
 syscall future_set(future_t* f, char* in){
-		
 	intmask mask;
 	mask = disable();
 	if(f == (future_t*)NULL){
 		restore(mask);
 		return SYSERR;
 	}
+	
+	/*if(f-> mode == FUTURE_QUEUE){
+		//if(f -> count == f -> max_elems-1){
+		//	fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
+		//	node -> pid = getpid();
+		//	if(f -> set_queue == NULL){
+		//		node -> next = NULL;
+		//		f -> set_queue = node;
+		//	}
+		//	else{
+		//		fnode_t *ptr;
+		//		node -> next = NULL;
+		//		ptr = f -> set_queue;
+		//		while(ptr -> next != NULL)
+		//			ptr = ptr -> next;
+		//		ptr -> next = node;
+		//	}
+		//	suspend(getpid());
+		//}
+		if(f -> state == FUTURE_EMPTY){
+			f -> count++;
+			char* tailelemptr = f->data + (f->tail * f->size);
+			memcpy(tailelemptr, in, f -> size);
+			f -> tail = (f -> tail + 1) % (f -> max_elems);
+			f -> state = FUTURE_READY;
+		}
+		else if(f -> state == FUTURE_WAITING){
+			if(f -> count == f -> max_elems-1){
+				fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
+				node -> pid = getpid();
+				if(f -> set_queue == NULL){
+					node -> next = NULL;
+					f -> set_queue = node;
+				}
+				else{
+					fnode_t *ptr;
+					node -> next = NULL;
+					ptr = f -> set_queue;
+					while(ptr -> next != NULL)
+						ptr = ptr -> next;
+					ptr -> next = node;
+				}
+				suspend(getpid());
+	                }
+
+			f -> count++;
+			char* tailelemptr = f->data + (f->tail * f->size);
+			memcpy(tailelemptr, in, f -> size);
+			f -> tail = (f -> tail + 1) % (f -> max_elems);
+			f -> state = FUTURE_READY;
+			//kprintf("add element to dQ\n");
+			fnode_t *ptr;
+			ptr = f -> get_queue;
+			int c = 0;
+			while(ptr != NULL){
+				ptr = ptr -> next;
+				c = c + 1;
+			}
+			if(c > 0){
+				fnode_t *tmp;
+				tmp = f -> get_queue;
+				f -> get_queue = f->get_queue -> next;
+				resume(tmp -> pid);
+				freemem(tmp, sizeof(fnode_t*));
+			}
+		}
+		else if(f -> state == FUTURE_READY){*/
+			if(f -> count == f -> max_elems-1){
+				fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
+				node -> pid = getpid();
+				if(f -> set_queue == NULL){
+					node -> next = NULL;
+					f -> set_queue = node;
+				}
+				else{
+					fnode_t *ptr;
+					node -> next = NULL;
+					ptr = f -> set_queue;
+					while(ptr -> next != NULL)
+						ptr = ptr -> next;
+					ptr -> next = node;
+				}
+				suspend(getpid());
+                        }
+			f -> count++;
+			char* tailelemptr = f->data + (f->tail * f->size);
+			memcpy(tailelemptr, in, f -> size);
+			f -> tail = (f -> tail + 1) % (f -> max_elems);
+			f -> state = FUTURE_READY;
+			fnode_t *ptr;
+			ptr = f -> get_queue;
+			int c = 0;
+			while(ptr != NULL){
+				ptr = ptr -> next;
+				c = c + 1;
+			}
+			if(c > 0){
+				fnode_t *tmp;
+				tmp = f -> get_queue;
+				f -> get_queue = f->get_queue -> next;
+				resume(tmp -> pid);
+				freemem(tmp, sizeof(fnode_t*));
+			}
+		//}
+
+	//}
+	/*
 	if(f -> state == FUTURE_READY){
 		if(f -> mode == FUTURE_EXCLUSIVE || f -> mode == FUTURE_SHARED){
 			restore(mask);
@@ -256,7 +419,7 @@ syscall future_set(future_t* f, char* in){
 			}
 			f -> state = FUTURE_READY;
 		}
-	}
+	}*/
 	restore(mask);
 	return (OK);
 }
