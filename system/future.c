@@ -292,7 +292,7 @@ syscall future_set(future_t* f, char* in){
 		restore(mask);
 		return SYSERR;
 	}
-	if(f-> mode == FUTURE_QUEUE){
+	/*if(f-> mode == FUTURE_QUEUE){
 		if(f -> count == f -> max_elems-1){
 			fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
 			node -> pid = getpid();
@@ -360,7 +360,8 @@ syscall future_set(future_t* f, char* in){
 		}
 		if(f -> state == FUTURE_READY){
 		//WORKING CODE
-			/*if(f -> count == f -> max_elems-1){
+		*/
+			if(f -> count == f -> max_elems-1){
 				fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
 				node -> pid = getpid();
 				if(f -> set_queue == NULL){
@@ -376,7 +377,7 @@ syscall future_set(future_t* f, char* in){
 					ptr -> next = node;
 				}
 				suspend(getpid());
-                        }*/
+                        }//*/
 			f -> count++;
 			char* tailelemptr = f->data + (f->tail * f->size);
 			memcpy(tailelemptr, in, f -> size);
@@ -396,11 +397,11 @@ syscall future_set(future_t* f, char* in){
 				resume(tmp -> pid);
 				freemem(tmp, sizeof(fnode_t*));
 			}// WORKING CODE ENDS HEre
-			restore(mask);
-			return OK;
-		}
+			//restore(mask);
+			//return OK;
+		//}
 
-	}
+	//}
 	/*
 	if(f -> state == FUTURE_READY){
 		if(f -> mode == FUTURE_EXCLUSIVE || f -> mode == FUTURE_SHARED){
