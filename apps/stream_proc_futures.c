@@ -24,7 +24,7 @@ uint stream_producer_future(future_t** fut) {
 		while (*a++ != '\t');
 		d -> value = atoi(a);
 		future_set(fut[stream_id],(char *)&d);
-		kprintf("%d\ %d\ %d\n",stream_id, d -> value, d -> time);
+		//kprintf("%d\ %d\ %d\n",stream_id, d -> value, d -> time);
 
 		//kprintf("value: %d\n", d -> value);
 		//kprintf("time: %d\n", d -> time);
@@ -161,7 +161,7 @@ int stream_proc_futures(int nargs, char* args[]) {
 		de *d = (de *)getmem(sizeof(de));
 		d->time = ts;
 		d->value = v;
-		kprintf("%d\ %d\ %d\n",st, d -> value, d -> time);
+		//kprintf("%d\ %d\ %d\n",st, d -> value, d -> time);
 
 		future_set(farray[st],(char*)&d);
 		

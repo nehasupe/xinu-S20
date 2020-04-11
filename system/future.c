@@ -38,7 +38,14 @@ syscall future_free(future_t* f){
 	return OK; 
 		
 }
-
+syscall future_get(future_t* f, char* out){
+        intmask mask;
+        mask = disable();
+        if(f == (future_t*)NULL){
+	        restore(mask);
+	        return SYSERR;
+	}
+/*									        }
 syscall future_get(future_t* f, char* out){
 		
 	intmask mask;
@@ -54,13 +61,17 @@ syscall future_get(future_t* f, char* out){
 			node -> pid = getpid();
 			node -> next = NULL;
 			f -> get_queue = node;
-			f -> state = FUTURE_WAITING;
+			//f -> state = FUTURE_WAITING;
+			kprintf("suspend consumerempty pid %d\n", getpid());
 			suspend(getpid());
 			char* headelemptr = f->data + (f->head * f->size);
 			memcpy(out, headelemptr, f -> size);
 			f -> head = (f -> head + 1) % (f -> max_elems);
 			int counter = f -> count;
 			f -> count = counter - 1;
+			//if(f-> count==0){
+			//	f -> state = FUTURE_EMPTY;
+			//}
 			fnode_t *ptr;
 			ptr = f -> set_queue;
 			int c = 0;
@@ -68,22 +79,23 @@ syscall future_get(future_t* f, char* out){
 				ptr = ptr -> next;
 				c = c + 1;
 			}
-			if(c > 0){
+			if(f -> set_queue!= NULL){
 				fnode_t *tmp;
 				tmp = f -> set_queue;
 				f-> set_queue = f->set_queue -> next;
 				resume(tmp -> pid);
+				kprintf("resumed producer pid %d\n", tmp -> pid);
 				freemem(tmp, sizeof(fnode_t*));
 			}
 			restore(mask);
 			return OK;
 		}
-		if(f -> state == FUTURE_READY){
+		else if(f -> state == FUTURE_READY){
 			//f -> state = FUTURE_WAITING;
 			//fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
 			//node -> pid = getpid();
 
-			if(f -> count == 0){
+			/*if(f -> count == 0){
 				fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
 				node -> pid = getpid();
 				fnode_t *ptr;
@@ -92,13 +104,17 @@ syscall future_get(future_t* f, char* out){
 				while(ptr -> next != NULL)
 					ptr = ptr -> next;
 				ptr -> next = node;
+				kprintf("suspend consumerready pid %d\n", getpid());
 				suspend(getpid());
-			}
-			char* headelemptr = f->data + (f->head * f->size);
+			}*/
+			/*char* headelemptr = f->data + (f->head * f->size);
 			memcpy(out, headelemptr, f -> size);
 			f -> head = (f -> head + 1) % (f -> max_elems);
 			int counter = f -> count;
 			f -> count = counter - 1;
+			if(f -> count == 0){
+				f -> state == FUTURE_WAITING;
+			}
 			fnode_t *ptr;
 			ptr = f -> set_queue;
 			int c = 0;
@@ -106,19 +122,20 @@ syscall future_get(future_t* f, char* out){
 				ptr = ptr -> next;
 				c = c + 1;
 			}
-			if(c > 0){
+			if(f -> set_queue!= NULL){
 				fnode_t *tmp;
 				tmp = f -> set_queue;
 				f-> set_queue = f->set_queue -> next;
 				resume(tmp -> pid);
+				kprintf("resumed producer %d\n",tmp -> pid); 
 				freemem(tmp, sizeof(fnode_t*));
 			}
 			restore(mask);
 			return OK;
 		}
-		if(f -> state == FUTURE_WAITING){
-			 fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
-			                         node -> pid = getpid();
+		else if(f -> state == FUTURE_WAITING){
+			fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
+			node -> pid = getpid();
 
 
 			fnode_t *ptr;
@@ -127,12 +144,16 @@ syscall future_get(future_t* f, char* out){
 			while(ptr -> next != NULL)
 				ptr = ptr -> next;
 			ptr -> next = node;
+			kprintf("suspended consumerwaiting pid %d\n", getpid());
 			suspend(getpid());
 			char* headelemptr = f->data + (f->head * f->size);
 			memcpy(out, headelemptr, f -> size);
 			f -> head = (f -> head + 1) % (f -> max_elems);
 			int counter = f -> count;
 			f -> count = counter - 1;
+			//if(f -> count ==0){
+			//	f -> state = FUTURE_EMPTY;
+			//}
 			fnode_t *ptr1;
 			ptr1 = f -> set_queue;
 			int c = 0;
@@ -140,11 +161,12 @@ syscall future_get(future_t* f, char* out){
 				ptr1 = ptr1 -> next;
 				c = c + 1;
 			}
-			if(c > 0){
+			if(f -> set_queue!= NULL){
 				fnode_t *tmp;
 				tmp = f -> set_queue;
 				f-> set_queue = f->set_queue -> next;
 				resume(tmp -> pid);
+				kprintf("resumed prodcucer %d\n", tmp -> pid);
 				freemem(tmp, sizeof(fnode_t*));
 			}
 			restore(mask);
@@ -281,10 +303,10 @@ syscall future_get(future_t* f, char* out){
 		}
 			
 	}*/
-	restore(mask);
+	/*restore(mask);
 	return OK;
 }
-
+*/
 syscall future_set(future_t* f, char* in){
 	intmask mask;
 	mask = disable();
@@ -292,7 +314,7 @@ syscall future_set(future_t* f, char* in){
 		restore(mask);
 		return SYSERR;
 	}
-	/*if(f-> mode == FUTURE_QUEUE){
+	if(f-> mode == FUTURE_QUEUE){
 		if(f -> count == f -> max_elems-1){
 			fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
 			node -> pid = getpid();
@@ -308,13 +330,14 @@ syscall future_set(future_t* f, char* in){
 					ptr = ptr -> next;
 				ptr -> next = node;
 			}
+			kprintf("producer suspended\n");
 			suspend(getpid());
 		}
 		if(f -> state == FUTURE_EMPTY){
-			f -> count++;
 			char* tailelemptr = f->data + (f->tail * f->size);
 			memcpy(tailelemptr, in, f -> size);
 			f -> tail = (f -> tail + 1) % (f -> max_elems);
+			f -> count++;
 			f -> state = FUTURE_READY;
 			fnode_t *ptr;
 			ptr = f -> get_queue;
@@ -323,11 +346,12 @@ syscall future_set(future_t* f, char* in){
 				ptr = ptr -> next;
 				c = c + 1;
 			}
-			if(c > 0){
+			if(f -> get_queue!= NULL){
 				fnode_t *tmp;
 				tmp = f -> get_queue;
 				f -> get_queue = f->get_queue -> next;
 				resume(tmp -> pid);
+				kprintf("consumerempty resumed %d\n", tmp->pid);
 				freemem(tmp, sizeof(fnode_t*));
 			}
 			restore(mask);
@@ -335,12 +359,13 @@ syscall future_set(future_t* f, char* in){
 		}
 		if(f -> state == FUTURE_WAITING){
 
-			f -> count++;
+			
 			char* tailelemptr = f->data + (f->tail * f->size);
 			memcpy(tailelemptr, in, f -> size);
 			f -> tail = (f -> tail + 1) % (f -> max_elems);
 			f -> state = FUTURE_READY;
 			//kprintf("add element to dQ\n");
+			f -> count++;
 			fnode_t *ptr;
 			ptr = f -> get_queue;
 			int c = 0;
@@ -348,11 +373,12 @@ syscall future_set(future_t* f, char* in){
 				ptr = ptr -> next;
 				c = c + 1;
 			}
-			if(c > 0){
+			if(f -> get_queue!= NULL){
 				fnode_t *tmp;
 				tmp = f -> get_queue;
 				f -> get_queue = f->get_queue -> next;
 				resume(tmp -> pid);
+				kprintf("consumerwaiting resumed %d\n", tmp -> pid);
 				freemem(tmp, sizeof(fnode_t*));
 			}
 			restore(mask);
@@ -360,8 +386,7 @@ syscall future_set(future_t* f, char* in){
 		}
 		if(f -> state == FUTURE_READY){
 		//WORKING CODE
-		*/
-			if(f -> count == f -> max_elems-1){
+			/*if(f -> count == f -> max_elems-1){
 				fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
 				node -> pid = getpid();
 				if(f -> set_queue == NULL){
@@ -376,12 +401,25 @@ syscall future_set(future_t* f, char* in){
 						ptr = ptr -> next;
 					ptr -> next = node;
 				}
+				kprintf("processes on get queue\n");
+				 fnode_t *ptr1;
+				 ptr1 = f -> get_queue;
+				int c = 0;
+				 while(ptr1 != NULL){
+					 kprintf("%d ", ptr1-> pid);
+					ptr1 = ptr1 -> next;
+
+				}
+
+				kprintf("suspended producer pid %d\n", getpid());
 				suspend(getpid());
-                        }//*/
-			f -> count++;
+                        }*/
+			
 			char* tailelemptr = f->data + (f->tail * f->size);
 			memcpy(tailelemptr, in, f -> size);
+			//kprintf("producer producing and insert in data\n");
 			f -> tail = (f -> tail + 1) % (f -> max_elems);
+			f -> count++;
 			f -> state = FUTURE_READY;
 			fnode_t *ptr;
 			ptr = f -> get_queue;
@@ -390,18 +428,19 @@ syscall future_set(future_t* f, char* in){
 				ptr = ptr -> next;
 				c = c + 1;
 			}
-			if(c > 0){
+			if(f -> get_queue!= NULL){
 				fnode_t *tmp;
 				tmp = f -> get_queue;
 				f -> get_queue = f->get_queue -> next;
 				resume(tmp -> pid);
+				kprintf("resumed ready consumer pid %d\n", tmp -> pid);
 				freemem(tmp, sizeof(fnode_t*));
 			}// WORKING CODE ENDS HEre
-			//restore(mask);
-			//return OK;
-		//}
+			restore(mask);
+			return OK;
+		}
 
-	//}
+	}
 	/*
 	if(f -> state == FUTURE_READY){
 		if(f -> mode == FUTURE_EXCLUSIVE || f -> mode == FUTURE_SHARED){
