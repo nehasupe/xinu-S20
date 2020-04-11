@@ -48,6 +48,74 @@ syscall future_get(future_t* f, char* out){
 		return SYSERR;
 	}
 	if(f -> mode == FUTURE_QUEUE){
+		if(f -> state == FUTURE_EMPTY){
+			f -> state = FUTURE_WAITING;
+			fnode_t* node = (fnode_t *) getmem(sizeof(fnode_t));
+			node -> pid = getpid();
+			node -> next = NULL;
+			f -> get_queue = node;
+			f -> state = FUTURE_WAITING;
+			suspend(getpid());
+			char* headelemptr = f->data + (f->head * f->size);
+			memcpy(out, headelemptr, f -> size);
+			f -> head = (f -> head + 1) % (f -> max_elems);
+			int counter = f -> count;
+			f -> count = counter - 1;
+			restore(mask);
+			return OK;
+		}
+		if(f -> state == FUTURE_READY){
+			if(f -> count == 0){
+				fnode_t *ptr;
+			node -> next = NULL;
+			ptr = f -> get_queue;
+			while(ptr -> next != NULL)
+				ptr = ptr -> next;
+			ptr -> next = node;
+			suspend(getpid());
+			}
+			char* headelemptr = f->data + (f->head * f->size);
+			memcpy(out, headelemptr, f -> size);
+			f -> head = (f -> head + 1) % (f -> max_elems);
+			int counter = f -> count;
+			f -> count = counter - 1;
+			fnode_t *ptr;
+			ptr = f -> set_queue;
+			int c = 0;
+			while(ptr != NULL){
+				ptr = ptr -> next;
+				c = c + 1;
+			}
+			if(c > 0){
+				fnode_t *tmp;
+				tmp = f -> set_queue;
+				f-> set_queue = f->set_queue -> next;
+				resume(tmp -> pid);
+				freemem(tmp, sizeof(fnode_t*));
+			}
+			restore(mask);
+			return OK;
+		}
+		if(f -> state == FUTURE_WAITING){
+			fnode_t *ptr;
+			node -> next = NULL;
+			ptr = f -> get_queue;
+			while(ptr -> next != NULL)
+				ptr = ptr -> next;
+			ptr -> next = node;
+			suspend(getpid());
+			char* headelemptr = f->data + (f->head * f->size);
+			memcpy(out, headelemptr, f -> size);
+			f -> head = (f -> head + 1) % (f -> max_elems);
+			int counter = f -> count;
+			f -> count = counter - 1;
+			restore(mask);
+			return OK;
+			
+	}
+	/*
+	//WORKING CODE
+	if(f -> mode == FUTURE_QUEUE){
 		if(f->state == FUTURE_EMPTY){
 			fnode_t* node = (fnode_t *) getmem(sizeof(fnode_t));
 			node -> pid = getpid();
@@ -99,7 +167,7 @@ syscall future_get(future_t* f, char* out){
 			}
 			
 		
-	}	
+	}*/	
 		/*if(f -> state == FUTURE_EMPTY){
 		if(f -> mode == FUTURE_SHARED || f -> mode == FUTURE_QUEUE){
 			if(f -> get_queue != NULL && f -> mode == FUTURE_SHARED){
@@ -184,50 +252,48 @@ syscall future_set(future_t* f, char* in){
 		restore(mask);
 		return SYSERR;
 	}
-	
-	/*if(f-> mode == FUTURE_QUEUE){
-		//if(f -> count == f -> max_elems-1){
-		//	fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
-		//	node -> pid = getpid();
-		//	if(f -> set_queue == NULL){
-		//		node -> next = NULL;
-		//		f -> set_queue = node;
-		//	}
-		//	else{
-		//		fnode_t *ptr;
-		//		node -> next = NULL;
-		//		ptr = f -> set_queue;
-		//		while(ptr -> next != NULL)
-		//			ptr = ptr -> next;
-		//		ptr -> next = node;
-		//	}
-		//	suspend(getpid());
-		//}
+	if(f-> mode == FUTURE_QUEUE){
+		if(f -> count == f -> max_elems-1){
+			fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
+			node -> pid = getpid();
+			if(f -> set_queue == NULL){
+				node -> next = NULL;
+				f -> set_queue = node;
+			}
+			else{
+				fnode_t *ptr;
+				node -> next = NULL;
+				ptr = f -> set_queue;
+				while(ptr -> next != NULL)
+					ptr = ptr -> next;
+				ptr -> next = node;
+			}
+			suspend(getpid());
+		}
 		if(f -> state == FUTURE_EMPTY){
 			f -> count++;
 			char* tailelemptr = f->data + (f->tail * f->size);
 			memcpy(tailelemptr, in, f -> size);
 			f -> tail = (f -> tail + 1) % (f -> max_elems);
 			f -> state = FUTURE_READY;
+			fnode_t *ptr;
+			ptr = f -> get_queue;
+			int c = 0;
+			while(ptr != NULL){
+				ptr = ptr -> next;
+				c = c + 1;
+			}
+			if(c > 0){
+				fnode_t *tmp;
+				tmp = f -> get_queue;
+				f -> get_queue = f->get_queue -> next;
+				resume(tmp -> pid);
+				freemem(tmp, sizeof(fnode_t*));
+			}
+			restore(mask);
+			return OK;
 		}
-		else if(f -> state == FUTURE_WAITING){
-			if(f -> count == f -> max_elems-1){
-				fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
-				node -> pid = getpid();
-				if(f -> set_queue == NULL){
-					node -> next = NULL;
-					f -> set_queue = node;
-				}
-				else{
-					fnode_t *ptr;
-					node -> next = NULL;
-					ptr = f -> set_queue;
-					while(ptr -> next != NULL)
-						ptr = ptr -> next;
-					ptr -> next = node;
-				}
-				suspend(getpid());
-	                }
+		if(f -> state == FUTURE_WAITING){
 
 			f -> count++;
 			char* tailelemptr = f->data + (f->tail * f->size);
@@ -249,9 +315,12 @@ syscall future_set(future_t* f, char* in){
 				resume(tmp -> pid);
 				freemem(tmp, sizeof(fnode_t*));
 			}
+			restore(mask);
+			return OK;
 		}
-		else if(f -> state == FUTURE_READY){*/
-			if(f -> count == f -> max_elems-1){
+		if(f -> state == FUTURE_READY){
+		//WORKING CODE
+			/*if(f -> count == f -> max_elems-1){
 				fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
 				node -> pid = getpid();
 				if(f -> set_queue == NULL){
@@ -267,7 +336,7 @@ syscall future_set(future_t* f, char* in){
 					ptr -> next = node;
 				}
 				suspend(getpid());
-                        }
+                        }*/
 			f -> count++;
 			char* tailelemptr = f->data + (f->tail * f->size);
 			memcpy(tailelemptr, in, f -> size);
@@ -286,10 +355,12 @@ syscall future_set(future_t* f, char* in){
 				f -> get_queue = f->get_queue -> next;
 				resume(tmp -> pid);
 				freemem(tmp, sizeof(fnode_t*));
-			}
-		//}
+			}// WORKING CODE ENDS HEre
+			restore(mask);
+			return OK;
+		}
 
-	//}
+	}
 	/*
 	if(f -> state == FUTURE_READY){
 		if(f -> mode == FUTURE_EXCLUSIVE || f -> mode == FUTURE_SHARED){
