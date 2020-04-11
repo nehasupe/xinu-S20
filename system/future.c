@@ -45,6 +45,86 @@ syscall future_get(future_t* f, char* out){
 	        restore(mask);
 	        return SYSERR;
 	}
+	if(f-> count == 0){
+		//enqueue to get queue
+		if(f -> get_queue == NULL){
+			fnode_t* node = (fnode_t *) getmem(sizeof(fnode_t));
+			node -> pid = getpid();
+			node -> next = NULL;
+			f -> get_queue = node;
+		}
+		else{
+			fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
+			node -> pid = getpid();
+			fnode_t *ptr;
+			node -> next = NULL;
+			ptr = f -> get_queue;
+			while(ptr -> next != NULL)
+				ptr = ptr -> next;
+			ptr -> next = node;
+		}
+		suspend(getpid());
+	}
+	char* headelemptr = f->data + (f->head * f->size);
+	memcpy(out, headelemptr, f -> size);
+	f -> head = (f -> head + 1) % (f -> max_elems);
+	int counter = f -> count;
+	f -> count = counter - 1;
+	if(f -> set_queue!= NULL){
+		fnode_t *tmp;
+		tmp = f -> set_queue;
+		f-> set_queue = f->set_queue -> next;
+		resume(tmp -> pid);
+		//kprintf("resumed producer pid %d\n", tmp -> pid);
+		freemem(tmp, sizeof(fnode_t*));
+	}
+	restore(mask);
+	return OK;
+}
+syscall future_set(future_t* f, char* in){
+	intmask mask;
+	mask = disable();
+	if(f == (future_t*)NULL){
+		restore(mask);
+		return SYSERR;
+	}
+	if(f -> count == f -> max_elems - 1){
+		//enqueue to set queue
+		if(f -> set_queue == NULL){
+			fnode_t* node = (fnode_t *) getmem(sizeof(fnode_t));
+			node -> pid = getpid();
+			node -> next = NULL;
+			f -> set_queue = node;
+		}
+		else{
+			fnode_t *node = (fnode_t *) getmem(sizeof(fnode_t));
+			node -> pid = getpid();
+			fnode_t *ptr;
+			node -> next = NULL;
+			ptr = f -> set_queue;
+			while(ptr -> next != NULL)
+				ptr = ptr -> next;
+			ptr -> next = node;
+		}
+		suspend(getpid());
+	}
+	char* tailelemptr = f->data + (f->tail * f->size);
+	memcpy(tailelemptr, in, f -> size);
+	//kprintf("producer producing and insert in data\n");
+	f -> tail = (f -> tail + 1) % (f -> max_elems);
+	f -> count++;
+	if(f -> get_queue!= NULL){
+		fnode_t *tmp;
+		tmp = f -> get_queue;
+		f -> get_queue = f->get_queue -> next;
+		resume(tmp -> pid);
+		kprintf("resumed ready consumer pid %d\n", tmp -> pid);
+		freemem(tmp, sizeof(fnode_t*));
+	}
+		
+	restore(mask);
+	return (OK);
+}
 /*									        }
 syscall future_get(future_t* f, char* out){
 		
@@ -307,6 +387,7 @@ syscall future_get(future_t* f, char* out){
 	return OK;
 }
 */
+	/*
 syscall future_set(future_t* f, char* in){
 	intmask mask;
 	mask = disable();
@@ -415,7 +496,7 @@ syscall future_set(future_t* f, char* in){
 				suspend(getpid());
                         }*/
 			
-			char* tailelemptr = f->data + (f->tail * f->size);
+			/*char* tailelemptr = f->data + (f->tail * f->size);
 			memcpy(tailelemptr, in, f -> size);
 			//kprintf("producer producing and insert in data\n");
 			f -> tail = (f -> tail + 1) % (f -> max_elems);
@@ -571,8 +652,8 @@ syscall future_set(future_t* f, char* in){
 			f -> state = FUTURE_READY;
 		}
 	}*/
-	restore(mask);
+	/*restore(mask);
 	return (OK);
-}
+}*/
 
 
