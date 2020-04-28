@@ -217,23 +217,89 @@ void fs_printfreemask(void) { // print block bitmask
 
 
 int fs_open(char *filename, int flags) {
-  return SYSERR;
+	struct inode node;
+	// check for flags and check if it is already open
+	for(int i = 0; i < fsd.root_dir.numentries; i++){
+		if(strcmp(filename, fsd.root_dir.entry[i].name) == 0){
+			fs_get_inode_by_num(dev0, i, &node);
+			oft[i].state = FSTATE_OPEN;
+			oft[i].fileptr = 0;
+			oft[i].de = &fsd.root_dir.entry[i];
+			oft[i].in = node;
+			return i;
+		}
+	}
+	kprintf("file doedn't exist\n");
+	return SYSERR;
 }
 
 int fs_close(int fd) {
-  return SYSERR;
+  	if(fd < NUM_FD){
+		if(oft[fd].state== FSTATE_OPEN){
+			oft[fd].state = FSTATE_CLOSED;
+			oft[fd].fileptr = 0;
+			return OK;
+		}
+		else{
+			kprintf("File not open\n");
+			return SYSERR;
+		}
+	}
+	printf("Invalid fd\n");
+	return SYSERR;
 }
 
 int fs_create(char *filename, int mode) {
-  return SYSERR;
+	if(mode == O_CREAT){
+		//Check if the filename already does not exists
+		for(int i = 0; i < fsd.root_dir.numentries; i++){
+		       if(strcmp(filename, fsd.root_dir.entry[i].name) == 0){
+				kprintf("This file already exists\n");
+				return SYSERR;
+		       }
+		}
+		       struct inode node;
+		       fs_get_inode_by_num(dev0, fsd.inodes_used, &node);
+		       node.id = fsd.inodes_used;
+		       node.type = INODE_TYPE_FILE;
+		       node.nlink = 1;
+		       node.device = dev0;
+		       node.size = 0;
+		       fs_put_inode_by_num(dev0, fsd.inodes_used, &node);
+		       fsd.inodes_used = fsd.inodes_used + 1;
+		       fsd.root_dir.entry[fsd.root_dir.numentries].inode_num = fsd.inodes_used;
+		       strcpy(fsd.root_dir.entry[fsd.root_dir.numentries].name, filename);
+		       fsd.root_dir.numentries = fsd.root_dir.numentries + 1;
+		       return fs_open(filename, O_RDWR);
+		}
+
+	kprintf("Wrong mode\n");
+	return SYSERR;
 }
 
 int fs_seek(int fd, int offset) {
-  return SYSERR;
+	if(oft[fd].state == FSTATE_OPEN){
+		oft[fd].fileptr = offset;
+		return OK;
+	}
+	kprintf("File NOT OPEN\n");
+	return SYSERR;
 }
 
 int fs_read(int fd, void *buf, int nbytes) {
-  return SYSERR;
+	if(oft[fd].state != FSTATE_OPEN){
+		kprintf("File not open\n");
+		return SYSERR;
+	}
+	struct inode *node;
+	node = (struct inode*)getmem(sizeof(struct inode));
+	memcpy(node, &(oft[fd].in), sizeof(struct inode));
+	int filesize = node -> size;
+	int end = oft[fd].fileptr + nbytes;
+	if (end > filesize){
+
+	}
+	return SYSERR;
 }
 
 int fs_write(int fd, void *buf, int nbytes) {
@@ -241,10 +307,11 @@ int fs_write(int fd, void *buf, int nbytes) {
 }
 
 int fs_link(char *src_filename, char* dst_filename) {
-  return SYSERR;
+	
+	return SYSERR;
 }
 
 int fs_unlink(char *filename) {
-  return SYSERR;
+	return SYSERR;
 }
 #endif /* FS */
