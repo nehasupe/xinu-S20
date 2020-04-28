@@ -3,7 +3,7 @@
 #include <prodcons_bb.h>
 #include <stdlib.h>
 
-
+extern int fstest(int nargs, char *args[]);
 extern int stream_proc_futures(int nargs, char *args[]);
 extern uint future_test(int nargs, char *args[]);
 extern int stream_proc(int nargs, char *args[]);
@@ -126,6 +126,9 @@ shellcmd xsh_run(int nargs, char *args[])
 	}
 	if(strncmp(args[0], "futures_test", 13)== 0){
 		resume (create((void *)future_test, 4096, 20, "future_test", 2, nargs, args));
+	}
+	if(strncmp(args[0], "fstest", 6)==0){
+		resume(create(fstest, 4096, 20, "fstest", 2, nargs, args));
 	}
 	//if(strncmp(args[0], "tscdf_fq", 8)== 0){
 	//	resume (create(stream_proc_futures, 4096, 20, "stream_proc_futures", 2, nargs, args));
