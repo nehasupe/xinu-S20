@@ -396,7 +396,24 @@ int fs_write(int fd, void *buf, int nbytes) {
 }
 
 int fs_link(char *src_filename, char* dst_filename) {
-	
+	struct inode node;
+	// check for flags and check if it is already open
+	for(int i = 0; i < fsd.root_dir.numentries; i++){
+		if(strcmp(src_filename, fsd.root_dir.entry[i].name) == 0){
+			if(fs_get_inode_by_num(dev0, fsd.root_dir.entry[i].inode_num, &node) == SYSERR){
+					kprintf("Error while getting inode by num\n");
+					return SYSERR;
+			}
+			//node is at i, put the new node at another spot
+			node.nlink = node.nlink + 1;
+			if(fs_put_inode_by_num(dev0, fsd.root_dir.entry[i].inode_num, &node) == SYSERR){
+				return SYSERR;
+			}
+			fsd.root_dir.entry[fsd.root_dir.numentries].inode_num = fsd.root_dir.entry[i].inode_num;
+			strcpy(fsd.root_dir.entry[fsd.root_dir.numentries].name, dst_filename);
+	       		fsd.root_dir.numentries = fsd.root_dir.numentries + 1;
+		}
+	}
 	return SYSERR;
 }
 
