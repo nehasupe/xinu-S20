@@ -279,7 +279,7 @@ int fs_create(char *filename, int mode) {
 
 int fs_seek(int fd, int offset) {
 	if(oft[fd].state == FSTATE_OPEN){
-		oft[fd].fileptr = offset;
+		oft[fd].fileptr = oft[fd].fileptr + offset;
 		return OK;
 	}
 	kprintf("File NOT OPEN\n");
