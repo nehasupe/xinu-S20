@@ -221,12 +221,26 @@ int fs_open(char *filename, int flags) {
 	// check for flags and check if it is already open
 	for(int i = 0; i < fsd.root_dir.numentries; i++){
 		if(strcmp(filename, fsd.root_dir.entry[i].name) == 0){
-			fs_get_inode_by_num(dev0, i, &node);
-			oft[i].state = FSTATE_OPEN;
-			oft[i].fileptr = 0;
-			oft[i].de = &fsd.root_dir.entry[i];
-			oft[i].in = node;
-			return i;
+			if(flags == O_RDONLY || flags == O_WRONLY || flags == O_RDWR){
+				if(fs_get_inode_by_num(dev0, i, &node) == SYSERR){
+					kprintf("Error while getting inode by num\n");
+					return SYSERR;
+				}
+				if(oft[i].state == FSTATE_OPEN){
+					kprintf("this file is already open\n");
+					return SYSERR;
+				}
+				oft[i].state = FSTATE_OPEN;
+				oft[i].fileptr = 0;
+				oft[i].de = &fsd.root_dir.entry[i];
+				oft[i].in = node;
+				oft[i].flag = flags;
+				return i;
+			}
+			else{
+				kprintf("Invalid Flag\n");
+				return SYSERR;
+			}
 		}
 	}
 	kprintf("file doedn't exist\n");
@@ -234,7 +248,7 @@ int fs_open(char *filename, int flags) {
 }
 
 int fs_close(int fd) {
-  	if(fd < NUM_FD){
+  	if(fd > -1 && fd < NUM_FD){
 		if(oft[fd].state== FSTATE_OPEN){
 			oft[fd].state = FSTATE_CLOSED;
 			oft[fd].fileptr = 0;
@@ -251,6 +265,11 @@ int fs_close(int fd) {
 
 int fs_create(char *filename, int mode) {
 	if(mode == O_CREAT){
+		if(strlen(filename) > FILENAMELEN || strlen(filename) == 0){
+			printf("Incorrect file name\n");
+			return SYSERR;
+		}
+		
 		//Check if the filename already does not exists
 		for(int i = 0; i < fsd.root_dir.numentries; i++){
 		       if(strcmp(filename, fsd.root_dir.entry[i].name) == 0){
@@ -258,19 +277,23 @@ int fs_create(char *filename, int mode) {
 				return SYSERR;
 		       }
 		}
-		       struct inode node;
-		       fs_get_inode_by_num(dev0, fsd.inodes_used, &node);
-		       node.id = fsd.inodes_used;
-		       node.type = INODE_TYPE_FILE;
-		       node.nlink = 1;
-		       node.device = dev0;
-		       node.size = 0;
-		       fs_put_inode_by_num(dev0, fsd.inodes_used, &node);
-		       fsd.inodes_used = fsd.inodes_used + 1;
-		       fsd.root_dir.entry[fsd.root_dir.numentries].inode_num = fsd.inodes_used;
-		       strcpy(fsd.root_dir.entry[fsd.root_dir.numentries].name, filename);
-		       fsd.root_dir.numentries = fsd.root_dir.numentries + 1;
-		       return fs_open(filename, O_RDWR);
+	       struct inode node;
+	       if(fs_get_inode_by_num(dev0, fsd.inodes_used, &node)== SYSERR){
+		       return SYSERR;
+	       }
+	       node.id = fsd.inodes_used;
+	       node.type = INODE_TYPE_FILE;
+	       node.nlink = 1;
+	       node.device = dev0;
+	       node.size = 0;
+		if(fs_put_inode_by_num(dev0, fsd.inodes_used, &node) == SYSERR){
+			return SYSERR;
+		}
+	       fsd.inodes_used = fsd.inodes_used + 1;
+	       fsd.root_dir.entry[fsd.root_dir.numentries].inode_num = fsd.inodes_used;
+	       strcpy(fsd.root_dir.entry[fsd.root_dir.numentries].name, filename);
+	       fsd.root_dir.numentries = fsd.root_dir.numentries + 1;
+	       return fs_open(filename, O_RDWR);
 		}
 
 	kprintf("Wrong mode\n");
@@ -278,7 +301,7 @@ int fs_create(char *filename, int mode) {
 }
 
 int fs_seek(int fd, int offset) {
-	if(oft[fd].state == FSTATE_OPEN){
+	if(oft[fd].state == FSTATE_OPEN && fd > -1 && fd < NUM_FD){
 		oft[fd].fileptr = oft[fd].fileptr + offset;
 		return OK;
 	}
@@ -287,23 +310,89 @@ int fs_seek(int fd, int offset) {
 }
 
 int fs_read(int fd, void *buf, int nbytes) {
-	if(oft[fd].state != FSTATE_OPEN){
-		kprintf("File not open\n");
-		return SYSERR;
-	}
-	struct inode *node;
-	node = (struct inode*)getmem(sizeof(struct inode));
-	memcpy(node, &(oft[fd].in), sizeof(struct inode));
-	int filesize = node -> size;
-	int end = oft[fd].fileptr + nbytes;
-	if (end > filesize){
-
+	if( fd < NUM_FD || fd > -1){
+		if(oft[fd].state != FSTATE_OPEN){
+			kprintf("File not open\n");
+			return SYSERR;
+		}
+		if(oft[fd].flag == O_RDONLY || oft[fd].flag == O_RDWR){
+			int start = oft[fd].fileptr;
+			int end = oft[fd].fileptr + nbytes;
+			//if the actual file size is less than the 
+			if (end > oft[fd].in.size){
+				nbytes = oft[fd].in.size - oft[fd].fileptr;
+				end = oft[fd].in.size;
+			}
+			int startblock = start / fsd.blocksz;
+			int endblock = end / fsd.blocksz;
+			
+			if(end % fsd.block != 0){
+				endblock = endblock + 1;
+			}
+			
+  			int offset = start % fsd.blocksz;
+ 			int size = fsd.blocksz - offset;
+  			char *buffer = (char *)buf;		
+			for (i = startblock; i < endblock; i++) {
+				if(bs_bread(dev0, oft[fd].in.blocks[i], offset, buffer, size) == SYSERR){
+					kprintf("error in reading file\n");
+					return SYSERR;
+				}
+				offset = 0;
+				size = fsd.blocksz - offset;				
+				buffer = buffer + size;				
+			}
+			oft[fd].fileptr = end;
+			return nbytes;
+		}
 	}
 	return SYSERR;
 }
 
 int fs_write(int fd, void *buf, int nbytes) {
-  return SYSERR;
+	if (oft[fd].state != FSTATE_OPEN) {
+    		kprintf("File not open\n");
+    		return SYSERR;
+	}
+	if(oft[fd].flag == O_WRONLY || oft[fd].flag == O_RDWR){
+		int start = oft[fd].fileptr;
+		int end = oft[fd].fileptr + nbytes;
+		int startblock = start / fsd.blocksz;
+		int endblock = end / fsd.blocksz;
+		if(end % fsd.block != 0){
+			endblock = endblock + 1;
+		}
+		int currentblock = oft[fd].in.size / fsd.blocksz;
+		
+		int j = FIRST_INODE_BLOCK + NUM_INODE_BLOCKS;
+		for(int i = currentblock; i < endblock; i++){
+			while(fs_getmaskbit(j) != 0){
+				j++;
+			}
+			fs_setmaskbit(j);
+			oft[fd].in.blocks[i] = j;
+		}
+		//if the actual file size is less than the 
+		if (end > oft[fd].in.size){
+			oft[fd].in.size = end;
+		}
+		int offset = start % fsd.blocksz;
+		int size = fsd.blocksz - offset;
+		char *buffer = (char *)buf;		
+		for (int i = startblock; i < endblock; i++) {
+			if(bs_bwrite(dev0, oft[fd].in.blocks[i], offset, buffer, size) == SYSERR){
+				kprintf("error in reading file\n");
+				return SYSERR;
+			}
+			offset = 0;
+			size = fsd.blocksz - offset;				
+			buffer = buffer + size;				
+		}
+		oft[fd].fileptr = end;
+		return nbytes;
+		
+	}
+	return SYSERR;
 }
 
 int fs_link(char *src_filename, char* dst_filename) {
