@@ -222,10 +222,12 @@ int fs_open(char *filename, int flags) {
 	for(int i = 0; i < fsd.root_dir.numentries; i++){
 		if(strcmp(filename, fsd.root_dir.entry[i].name) == 0){
 			if(flags == O_RDONLY || flags == O_WRONLY || flags == O_RDWR){
-				if(fs_get_inode_by_num(dev0, fsd.root_dir.entry[i].inode_num, &node) == SYSERR){
-					kprintf("Error while getting inode by num\n");
-					return SYSERR;
-				}
+				kprintf("the inode is %d\n",  fsd.root_dir.entry[i].inode_num);
+				kprintf("name %s",  fsd.root_dir.entry[i].name);
+				fs_get_inode_by_num(dev0, fsd.root_dir.entry[i].inode_num, &node);// == SYSERR){
+				//	kprintf("Error while getting inode by num\n");
+				//	return SYSERR;
+				//}
 				if(oft[i].state == FSTATE_OPEN){
 					kprintf("this file is already open\n");
 					return SYSERR;
@@ -282,20 +284,22 @@ int fs_create(char *filename, int mode) {
 		       }
 		}
 	       struct inode node;
-	       if(fs_get_inode_by_num(dev0, fsd.inodes_used, &node)== SYSERR){
-		       return SYSERR;
-	       }
+	       fs_get_inode_by_num(dev0,++fsd.inodes_used, &node);//== SYSERR){
+		//       return SYSERR;
+	       //}
 	       node.id = fsd.inodes_used;
 	       node.type = INODE_TYPE_FILE;
 	       node.nlink = 1;
 	       node.device = dev0;
 	       node.size = 0;
-		if(fs_put_inode_by_num(dev0, fsd.inodes_used, &node) == SYSERR){
-			return SYSERR;
-		}
-	       fsd.inodes_used = fsd.inodes_used + 1;
+	fs_put_inode_by_num(dev0, fsd.inodes_used, &node);// == SYSERR){
+		//	return SYSERR;
+		//}
+	       //fsd.inodes_used = fsd.inodes_used + 1;
 	       fsd.root_dir.entry[fsd.root_dir.numentries].inode_num = fsd.inodes_used;
+	       kprintf("inode num %d\n", fsd.root_dir.entry[fsd.root_dir.numentries].inode_num);
 	       strcpy(fsd.root_dir.entry[fsd.root_dir.numentries].name, filename);
+	       kprintf("nodes %d %d %d\n", node.id, node.nlink, node.size);
 	       fsd.root_dir.numentries = fsd.root_dir.numentries + 1;
 	       return fs_open(filename, O_RDWR);
 		}
@@ -320,15 +324,19 @@ int fs_read(int fd, void *buf, int nbytes) {
 			return SYSERR;
 		}
 		if(oft[fd].flag == O_RDONLY || oft[fd].flag == O_RDWR){
+			kprintf("READ\n");
 			kprintf("trying to read %d", fd);
+			 struct inode node;
+			 fs_get_inode_by_num(dev0, oft[fd].de->inode_num, &node);
+			
 			int start = oft[fd].fileptr; 
 			int end = oft[fd].fileptr + nbytes;
 			kprintf("start %d, end %d\n", start, end);
-			kprintf("size %d\n", oft[fd].in.size);
+			kprintf("size %d\n", node.size);
 			//if the actual file size is less than the 
 			if (end > oft[fd].in.size){
-				nbytes = oft[fd].in.size - oft[fd].fileptr;
-				end = oft[fd].in.size;
+				nbytes = node.size - oft[fd].fileptr;
+				end = node.size;
 			}
 			int startblock = start / fsd.blocksz;
 			int endblock = end / fsd.blocksz;
@@ -352,6 +360,9 @@ int fs_read(int fd, void *buf, int nbytes) {
 			}
 			oft[fd].fileptr = end;
 			kprintf("returning bytes %d\n", end);
+			 kprintf("after writing size is %d\n", node.size);
+			fs_put_inode_by_num(dev0, oft[fd].de->inode_num, &node);
+
 			return end;
 		}
 	}
@@ -364,6 +375,9 @@ int fs_write(int fd, void *buf, int nbytes) {
     		return SYSERR;
 	}
 	if(oft[fd].flag == O_WRONLY || oft[fd].flag == O_RDWR){
+		struct inode node;
+		fs_get_inode_by_num(dev0, oft[fd].de->inode_num, &node);
+		kprintf("size from node %d\n", node.size);
 		int start = oft[fd].fileptr;
 		int end = oft[fd].fileptr + nbytes;
 		int startblock = start / fsd.blocksz;
@@ -383,7 +397,7 @@ int fs_write(int fd, void *buf, int nbytes) {
 		}
 		//if the actual file size is less than the 
 		if (end > oft[fd].in.size){
-			oft[fd].in.size = end;
+			node.size = end;
 		}
 		int offset = start % fsd.blocksz;
 		int size = fsd.blocksz - offset;
@@ -398,7 +412,8 @@ int fs_write(int fd, void *buf, int nbytes) {
 			buffer = buffer + size;				
 		}
 		oft[fd].fileptr = end;
-		kprintf("after writing size is %d\n", oft[fd].in.size);
+		kprintf("after writing size is %d\n", node.size);
+		fs_put_inode_by_num(dev0, oft[fd].de->inode_num, &node);
 		return nbytes;
 		
 	}
@@ -410,13 +425,17 @@ int fs_link(char *src_filename, char* dst_filename) {
 	// check for flags and check if it is already open
 	for(int i = 0; i < fsd.root_dir.numentries; i++){
 		if(strcmp(src_filename, fsd.root_dir.entry[i].name) == 0){
-			if(fs_get_inode_by_num(dev0, fsd.root_dir.entry[i].inode_num, &node) == SYSERR){
-					kprintf("Error while getting inode by num\n");
-					return SYSERR;
-			}
+			fs_get_inode_by_num(dev0, fsd.root_dir.entry[i].inode_num,&node);// == SYSERR){
+			//		kprintf("Error while getting inode by num\n");
+			//		return SYSERR;
+			//}
+
 			//node is at i, put the new node at another spot
+			kprintf("the node nlink before updating %d\n", node.nlink);
 			node.nlink = node.nlink + 1;
+			kprintf("size from link %d\n", node.size);
 			if(fs_put_inode_by_num(dev0, fsd.root_dir.entry[i].inode_num, &node) == SYSERR){
+				
 				return SYSERR;
 			}
 			fsd.root_dir.entry[fsd.root_dir.numentries].inode_num = fsd.root_dir.entry[i].inode_num;
@@ -429,6 +448,23 @@ int fs_link(char *src_filename, char* dst_filename) {
 }
 
 int fs_unlink(char *filename) {
+	//search for the destination file name
+	//get the inode number
+	//delete it- but how?
+	//decrement num entries
+	//nlink -- if nlink ==1 the delete the data in blocks, setbitmaskto 0, fsclearmaskbit
+	struct inode node;
+        // check for flags and check if it is already open
+	for(int i = 0; i < fsd.root_dir.numentries; i++){
+		if(strcmp(filename, fsd.root_dir.entry[i].name) == 0){
+			fs_get_inode_by_num(dev0, fsd.root_dir.entry[i].inode_num,&node);
+			node.nlink = node.nlink - 1;
+			if(node.nlink == 0){
+				int num_blocks = node.size / fsd.blocksz;
+			}
+			return OK;
+		}
+	}
 	return SYSERR;
 }
 #endif /* FS */

@@ -117,6 +117,7 @@ uint fstest(int nargs, char *args[]) {
    {
        printf("\n\rReturn val for fclose : %d",rval);
    }
+   kprintf("test 2 completed\n");
 
 // Test 3
    rval2 = fs_unlink("Dst_Test_File");
