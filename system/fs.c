@@ -349,7 +349,7 @@ int fs_read(int fd, void *buf, int nbytes) {
   			int offset = start % fsd.blocksz;
  			int size = fsd.blocksz - offset;
   			char *buffer = (char *)buf;		
-			for (int i = startblock; i <= endblock; i++) {
+			for (int i = startblock+1; i < endblock; i++) {
 				if(bs_bread(dev0, oft[fd].in.blocks[i], offset, buffer, size) == SYSERR){
 					kprintf("error in reading file\n");
 					return SYSERR;
@@ -402,7 +402,7 @@ int fs_write(int fd, void *buf, int nbytes) {
 		int offset = start % fsd.blocksz;
 		int size = fsd.blocksz - offset;
 		char *buffer = (char *)buf;		
-		for (int i = startblock; i <= endblock; i++) {
+		for (int i = startblock+1; i < endblock; i++) {
 			if(bs_bwrite(dev0, oft[fd].in.blocks[i], offset, buffer, size) == SYSERR){
 				kprintf("error in reading file\n");
 				return SYSERR;
