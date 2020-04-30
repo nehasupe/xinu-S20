@@ -71,8 +71,7 @@ uint fstest(int nargs, char *args[]) {
     // Assuming here implementation of fs_seek is like "original_offset = original_offset + input_offset_from_fs_seek"
     fs_seek(fd,-rval); 
     
-    //read the file
-    kprintf("the fd of test file is %d\n", fd); 
+    //read the file 
     rval = fs_read(fd, buf2, rval);
     buf2[rval] = '\0';
 
@@ -100,7 +99,6 @@ uint fstest(int nargs, char *args[]) {
    }
    int fd1 = fs_open("Dst_Test_File", 0);
    //read the file 
-   kprintf("the fd1 is %d\n", fd1);
    rval = fs_read(fd1, buf3, rval);
    buf3[rval] = '\0';
 
@@ -110,50 +108,14 @@ uint fstest(int nargs, char *args[]) {
        goto clean_up;
    }
        
+   printf("\n\rContent of file %s",buf3);
+
    rval2 = fs_close(fd1);
    if(rval2 != OK)
    {
        printf("\n\rReturn val for fclose : %d",rval);
    }
-   kprintf("test 2 completed\n");
 
-   /* rval2 = fs_link("Test_File", "New_File");
-       if(rval2 != OK)
-	          {
-			         printf("\n\r File link failed");
-				        goto clean_up;
-					   }
-          int tfd = fs_open("New_File", 2);
-	     tbuf[0] = 'h';
-	        tbuf[1] = 'e';
-		   tbuf[2] = 'l';
-		      tbuf[3] = '\0';
-		         rval2 = fs_write(tfd, tbuf, strlen(tbuf));
-
-			    if(rval2 == 0)
-				       {
-					              printf("\n\r File write failed");
-						             goto clean_up;
-							        }
-
-			       fs_seek(tfd, -rval2);
-
-			          rval2 = fs_read(tfd, buf3, strlen(tbuf));
-				     buf3[rval2] = '\0';
-
-				        if(rval2 == 0)
-						   {
-							          printf("\n\r File read failed");
-								         goto clean_up;
-									    }
-
-					   printf("\n\rContent of file %s", buf3);
-
-					      rval2 = fs_close(tfd);
-					         if(rval2 != OK)
-							    {
-								           printf("\n\rReturn val for fclose : %d", rval);
-									      }*/
 // Test 3
    rval2 = fs_unlink("Dst_Test_File");
    if(rval2 != OK)
