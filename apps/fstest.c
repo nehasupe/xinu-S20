@@ -88,7 +88,7 @@ uint fstest(int nargs, char *args[]) {
     {
         printf("\n\rReturn val for fclose : %d",rval);
     }
-/*
+
 // Test 2
    // Link dst file to file from above
    rval2 = fs_link("Test_File", "Dst_Test_File");
@@ -123,7 +123,7 @@ uint fstest(int nargs, char *args[]) {
        printf("\n\r File unlink failed");
        goto clean_up;
    }
-*/
+
 clean_up:
     freemem(buf1,SIZE);
     freemem(buf2,SIZE);
