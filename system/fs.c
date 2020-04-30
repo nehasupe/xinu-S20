@@ -458,10 +458,15 @@ int fs_unlink(char *filename) {
         // check for flags and check if it is already open
 	for(int i = 0; i < fsd.root_dir.numentries; i++){
 		if(strcmp(filename, fsd.root_dir.entry[i].name) == 0){
+			fsd.root_dir.numentries = fsd.root_dir.numentries - 1;
 			fs_get_inode_by_num(dev0, fsd.root_dir.entry[i].inode_num,&node);
 			node.nlink = node.nlink - 1;
+			fsd.root_dir.entry[i].inode_num = -1;
+			strcpy(fsd.root_dir.entry[i].name, "\0");
 			if(node.nlink == 0){
-				int num_blocks = node.size / fsd.blocksz;
+				node.size = 0;
+				node.id = -1;
+				//int num_blocks = node.size / fsd.blocksz;
 			}
 			return OK;
 		}
