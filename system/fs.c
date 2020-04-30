@@ -222,7 +222,7 @@ int fs_open(char *filename, int flags) {
 	for(int i = 0; i < fsd.root_dir.numentries; i++){
 		if(strcmp(filename, fsd.root_dir.entry[i].name) == 0){
 			if(flags == O_RDONLY || flags == O_WRONLY || flags == O_RDWR){
-				if(fs_get_inode_by_num(dev0, i, &node) == SYSERR){
+				if(fs_get_inode_by_num(dev0, fsd.root_dir.entry[i].inode_num, &node) == SYSERR){
 					kprintf("Error while getting inode by num\n");
 					return SYSERR;
 				}
@@ -234,7 +234,11 @@ int fs_open(char *filename, int flags) {
 				oft[i].fileptr = 0;
 				oft[i].de = &fsd.root_dir.entry[i];
 				oft[i].in = node;
+				kprintf("id while inserting in oft %d\n", oft[i].in.id);
+				kprintf("nlink while inseting %d\n", oft[i].in.nlink);
+				kprintf("size while inserting %d\n", oft[i].in.size);
 				oft[i].flag = flags;
+				kprintf("written at fd %d\n", i);
 				return i;
 			}
 			else{
@@ -316,8 +320,11 @@ int fs_read(int fd, void *buf, int nbytes) {
 			return SYSERR;
 		}
 		if(oft[fd].flag == O_RDONLY || oft[fd].flag == O_RDWR){
-			int start = oft[fd].fileptr;
+			kprintf("trying to read %d", fd);
+			int start = oft[fd].fileptr; 
 			int end = oft[fd].fileptr + nbytes;
+			kprintf("start %d, end %d\n", start, end);
+			kprintf("size %d\n", oft[fd].in.size);
 			//if the actual file size is less than the 
 			if (end > oft[fd].in.size){
 				nbytes = oft[fd].in.size - oft[fd].fileptr;
@@ -325,6 +332,7 @@ int fs_read(int fd, void *buf, int nbytes) {
 			}
 			int startblock = start / fsd.blocksz;
 			int endblock = end / fsd.blocksz;
+			kprintf("end %d, endblock %d\n", end, endblock);
 			
 			if(end % fsd.blocksz != 0){
 				endblock = endblock + 1;
@@ -343,7 +351,8 @@ int fs_read(int fd, void *buf, int nbytes) {
 				buffer = buffer + size;				
 			}
 			oft[fd].fileptr = end;
-			return nbytes;
+			kprintf("returning bytes %d\n", end);
+			return end;
 		}
 	}
 	return SYSERR;
@@ -389,6 +398,7 @@ int fs_write(int fd, void *buf, int nbytes) {
 			buffer = buffer + size;				
 		}
 		oft[fd].fileptr = end;
+		kprintf("after writing size is %d\n", oft[fd].in.size);
 		return nbytes;
 		
 	}
@@ -412,6 +422,7 @@ int fs_link(char *src_filename, char* dst_filename) {
 			fsd.root_dir.entry[fsd.root_dir.numentries].inode_num = fsd.root_dir.entry[i].inode_num;
 			strcpy(fsd.root_dir.entry[fsd.root_dir.numentries].name, dst_filename);
 	       		fsd.root_dir.numentries = fsd.root_dir.numentries + 1;
+			return OK;
 		}
 	}
 	return SYSERR;

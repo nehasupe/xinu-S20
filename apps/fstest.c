@@ -71,7 +71,8 @@ uint fstest(int nargs, char *args[]) {
     // Assuming here implementation of fs_seek is like "original_offset = original_offset + input_offset_from_fs_seek"
     fs_seek(fd,-rval); 
     
-    //read the file 
+    //read the file
+    kprintf("the fd of test file is %d\n", fd); 
     rval = fs_read(fd, buf2, rval);
     buf2[rval] = '\0';
 
@@ -99,6 +100,7 @@ uint fstest(int nargs, char *args[]) {
    }
    int fd1 = fs_open("Dst_Test_File", 0);
    //read the file 
+   kprintf("the fd1 is %d\n", fd1);
    rval = fs_read(fd1, buf3, rval);
    buf3[rval] = '\0';
 
