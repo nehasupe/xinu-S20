@@ -326,14 +326,14 @@ int fs_read(int fd, void *buf, int nbytes) {
 			int startblock = start / fsd.blocksz;
 			int endblock = end / fsd.blocksz;
 			
-			if(end % fsd.block != 0){
+			if(end % fsd.blocksz != 0){
 				endblock = endblock + 1;
 			}
 			
   			int offset = start % fsd.blocksz;
  			int size = fsd.blocksz - offset;
   			char *buffer = (char *)buf;		
-			for (i = startblock; i < endblock; i++) {
+			for (int i = startblock; i < endblock; i++) {
 				if(bs_bread(dev0, oft[fd].in.blocks[i], offset, buffer, size) == SYSERR){
 					kprintf("error in reading file\n");
 					return SYSERR;
@@ -359,7 +359,7 @@ int fs_write(int fd, void *buf, int nbytes) {
 		int end = oft[fd].fileptr + nbytes;
 		int startblock = start / fsd.blocksz;
 		int endblock = end / fsd.blocksz;
-		if(end % fsd.block != 0){
+		if(end % fsd.blocksz != 0){
 			endblock = endblock + 1;
 		}
 		int currentblock = oft[fd].in.size / fsd.blocksz;
